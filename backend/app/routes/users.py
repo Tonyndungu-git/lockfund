@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from .. import schemas, services, security, models
+from ..services import user_service
+from ..schemas import user as user_schema
+from .. import security, models
 from ..database import get_db
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 
 router = APIRouter()
 
-@router.post("/register", response_model=schemas.user.User)
-def register_user(user: schemas.user.UserCreate, db: Session = Depends(get_db)):
+@router.post("/register", response_model=user_schema.User)
+def register_user(user: user_schema.UserCreate, db: Session = Depends(get_db)):
     """
     Create a new user.
 
@@ -16,12 +18,12 @@ def register_user(user: schemas.user.UserCreate, db: Session = Depends(get_db)):
     - **password**: The user's password.
     - **full_name**: The user's full name.
     """
-    db_user = services.user_service.get_user_by_email(db, email=user.email)
+    db_user = user_service.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    return services.user_service.create_user(db=db, user=user)
+    return user_service.create_user(db=db, user=user)
 
-@router.post("/token", response_model=schemas.user.Token)
+@router.post("/token", response_model=user_schema.Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """
     Authenticate a user and return an access token.
@@ -29,7 +31,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     - **username**: The user's email address.
     - **password**: The user's password.
     """
-    user = services.user_service.get_user_by_email(db, email=form_data.username)
+    user = user_service.get_user_by_email(db, email=form_data.username)
     if not user or not security.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
